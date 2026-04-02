@@ -415,89 +415,107 @@ function buildPlaybookHTML(facs, systemName) {
     <div class="pb-pagebreak"></div>
 
     <div class="pb-section">
-      <h2>Advocacy Marketing Playbook</h2>
-      <p>The following strategies are designed for ${isSystem ? systemName + "'s rural Minnesota facilities" : tc(facs[0].name)} to build community support and advocate for continued federal funding of rural healthcare.</p>
+      <h2>The Situation</h2>
+      <p>Rural healthcare facilities across Minnesota are facing serious financial pressure. Delays in Medicare and Medicaid reimbursements, proposed changes to federal funding formulas, and uncertainty about future payment rates are creating cash flow challenges for hospitals that already operate on thin margins.</p>
+      <p>Critical Access Hospitals like ${isSystem ? systemName + "'s rural facilities" : tc(facs[0].name)} exist because Congress recognized that standard Medicare payment rates would not sustain hospitals in low-population areas. The cost-based reimbursement model that keeps these facilities open depends on timely, predictable federal payments. When those payments are delayed or reduced, rural hospitals — which lack the financial reserves of large urban systems — are the first to feel it.</p>
+      <p>This is not a partisan issue. Rural communities across the political spectrum depend on these facilities for emergency care, primary care, and economic stability. The data in this playbook is designed to help you communicate what your facility means to your community — in concrete, local terms that resonate with residents, local leaders, and elected officials at every level.</p>
+    </div>
 
-      <h3>Strategy 1: Community Impact Communication</h3>
-      <p>Use your facility data to make the impact of potential closure concrete and local:</p>
+    <div class="pb-section">
+      <h2>Understanding Your Data</h2>
+      <p>The numbers in this playbook come from publicly available federal datasets. They provide a starting point — your facility will have more precise figures for many of these metrics. We encourage you to replace estimates with your actual data wherever possible.</p>
+      <h3>What RUCA Codes Mean</h3>
+      <p>The USDA classifies every ZIP code in the country on a Rural-Urban Commuting Area (RUCA) scale from 1 (urban core) to 10 (most rural). ${isSystem ? 'Your facilities serve communities' : tc(facs[0].name) + ' serves a community'} classified as RUCA ${isSystem ? facs.map(f => f.ruca_code).filter((v,i,a) => a.indexOf(v) === i).join(', ') : facs[0].ruca_code}, which means ${facs[0].ruca_code === '10' ? 'fully rural — low population density, long distances to services, and often only one healthcare facility within a reasonable drive' : facs[0].ruca_code >= '7' ? 'small town — limited services, with residents commuting to larger areas for many needs' : 'micropolitan — a small city with some infrastructure, but still underserved compared to metro areas'}.</p>
+      ${hpsaFacs.length > 0 ? `<h3>Health Professional Shortage Areas</h3>
+      <p>${hpsaFacs.length} of ${isSystem ? 'your' : 'the'} ${isSystem ? facs.length + ' facilities' : 'facility\'s community'} ${hpsaFacs.length === 1 ? 'is' : 'are'} in a federally designated Health Professional Shortage Area (HPSA). This means the federal government itself has determined that ${hpsaFacs.length === 1 ? 'this community does' : 'these communities do'} not have adequate access to primary care. HPSA scores range from 0 to 25, with higher scores indicating greater need. ${hpsaFacs.map(f => tc(f.name) + ' (' + f.hpsa_score + '/25)').join(', ')}.</p>` : ''}
+    </div>
+
+    <div class="pb-section">
+      <h2>Advocacy Playbook</h2>
+      <p>The following strategies help you communicate your facility's value to the community and to the elected officials who influence healthcare funding. The goal is simple: make sure the people who make decisions about rural healthcare funding understand exactly what is at stake locally.</p>
+
+      <h3>Strategy 1: Make the Impact Local and Concrete</h3>
+      <p>National statistics about rural healthcare don't move people. Local numbers do. Use your facility data to answer three questions your community and legislators need to hear:</p>
       <ul>
-        <li><strong>Lead with distance:</strong> "${isSystem ? 'If these facilities close, some communities will face drives of up to ' + maxDist + ' miles to the nearest hospital.' : 'If ' + tc(facs[0].name) + ' closes, the nearest facility is ' + (facs[0].nearest_distance_miles || '?') + ' miles away.'}"</li>
-        <li><strong>Population impact:</strong> An estimated ${totalPop.toLocaleString()} people depend on ${isSystem ? 'these facilities' : 'this facility'} as their nearest hospital — across ${totalBeds} hospital beds.</li>
-        <li><strong>Employment impact:</strong> ${Math.round(totalFTE)} FTE positions (actual headcount likely 1.3–1.5x higher) represent the livelihoods of families in ${isSystem ? 'these communities' : tc(facs[0].city)}. Rural hospitals are often a top-3 employer in their county.</li>
-        <li><strong>Inpatient volume:</strong> ${totalDischarges.toLocaleString()} inpatient discharges annually — and total patient encounters (including outpatient, ER, and clinic visits) are significantly higher. Your facility can provide exact numbers.</li>
-        ${hpsaFacs.length > 0 ? `<li><strong>Shortage designation:</strong> ${hpsaFacs.length} ${hpsaFacs.length === 1 ? 'facility operates' : 'facilities operate'} in a federally designated Health Professional Shortage Area. The federal government itself has recognized these communities need more healthcare access, not less.</li>` : ''}
+        <li><strong>"How far would I have to drive?"</strong> ${isSystem ? 'If these facilities close, some communities would face drives of up to ' + maxDist + ' miles to reach the nearest hospital.' : 'If ' + tc(facs[0].name) + ' closes, the nearest hospital is ' + (facs[0].nearest_distance_miles || '?') + ' miles away.'} In a cardiac emergency, distance is measured in minutes, and minutes save lives.</li>
+        <li><strong>"How many people depend on this?"</strong> An estimated ${totalPop.toLocaleString()} residents live in ${isSystem ? 'the combined service areas of these facilities' : tc(facs[0].name) + "'s service area"} — people for whom this is the closest hospital. These are your patients, your neighbors, your community.</li>
+        <li><strong>"What happens to our local economy?"</strong> ${isSystem ? 'These facilities employ ' : tc(facs[0].name) + ' employs '} ${Math.round(totalFTE).toLocaleString()} FTE staff (actual headcount with part-time employees is likely 30–50% higher). Rural hospitals are frequently among the largest employers in their county. When a hospital closes, it takes the local economy with it — not just healthcare jobs, but the businesses, schools, and families that depend on those paychecks.</li>
       </ul>
 
-      <h3>Strategy 2: Stakeholder Engagement</h3>
+      <h3>Strategy 2: Equip Your Community to Speak Up</h3>
+      <p>Your community members are the most powerful advocates for your facility. Most want to help — they just need to know how. Your role is to make it easy:</p>
       <ul>
-        <li>Create a one-page community fact sheet using the data above — print for board meetings, community events, and legislator visits</li>
-        <li>Draft template letters for community members to send to their state legislators and congressional delegation</li>
-        <li>Establish a "Take Action" page on your website with legislator contact information and talking points</li>
-        <li>Host community listening sessions — provide the data that frames the conversation</li>
+        <li><strong>Create a one-page community fact sheet</strong> using the data in this playbook. Print it for board meetings, community events, church bulletins, and coffee shop bulletin boards. Include the three local impact numbers above.</li>
+        <li><strong>Draft template letters</strong> that community members can personalize and send to their U.S. Representative, U.S. Senators, and state legislators. Keep the tone respectful and nonpartisan: "As your constituent, I'm writing to ask you to protect funding for [facility name], which serves [X] residents in [county]."</li>
+        <li><strong>Add a "Support Your Hospital" page to your website</strong> with legislator contact information, talking points, and links to send messages. Make the ask specific: protect Medicare/Medicaid reimbursement rates and ensure timely payments to rural facilities.</li>
+        <li><strong>Host a community information session.</strong> Present the data. Let people ask questions. Give them the tools to act. A packed room at a community meeting sends a message on its own.</li>
       </ul>
 
-      <h3>Strategy 3: Media &amp; Public Relations</h3>
+      <h3>Strategy 3: Tell Your Story Through Media</h3>
+      <p>Local media — newspapers, radio, TV — are hungry for stories that matter to their audience. Your facility's story matters.</p>
       <ul>
-        <li>Develop a press kit with facility data, staff stories, and patient testimonials</li>
-        <li>Pitch local media: "What happens to ${isSystem ? 'our communities' : tc(facs[0].city)} if federal healthcare funding is cut?"</li>
-        <li>Staff spotlight series — put faces on the people behind the numbers</li>
-        <li>Social media campaign using consistent messaging and data points across all ${isSystem ? systemName + ' facilities' : 'channels'}</li>
+        <li><strong>Develop a press kit</strong> with your facility data, two or three staff profiles, and a patient story (with permission). Frame it around the question: "What would ${isSystem ? 'our communities' : tc(facs[0].city)} look like without ${isSystem ? 'these hospitals' : 'this hospital'}?"</li>
+        <li><strong>Pitch a feature story</strong> to your local paper and regional outlets. Editors understand that hospital closures are front-page news — help them write that story before it happens, not after.</li>
+        <li><strong>Run a staff spotlight series</strong> on social media. Put faces on the numbers. The nurse who grew up in the community. The lab tech who drives 30 minutes to work here because she believes in what you do. The ER doctor who chose rural medicine because every patient matters.</li>
+        <li><strong>Be consistent on social media.</strong> Pick 3–4 key data points and repeat them regularly in different formats — graphics, short videos, quotes from community members. Repetition builds awareness.</li>
       </ul>
 
-      <h3>Strategy 4: Provider Recruitment Messaging</h3>
+      <h3>Strategy 4: Strengthen Provider Recruitment</h3>
+      <p>Funding uncertainty makes an already difficult recruitment challenge even harder. But proactive recruitment messaging can help:</p>
       <ul>
-        <li>In HPSA-designated areas, reframe marketing to also recruit providers: "Help us serve a community that needs you"</li>
-        <li>Highlight quality of life, community connection, and the impact a single provider can make in a rural setting</li>
-        <li>Partner with medical schools and residency programs to promote rural rotations</li>
+        <li>Reframe your community as an opportunity: "Help us serve ${totalPop.toLocaleString()} people who need you." Providers who choose rural medicine want to make a difference — show them the difference they'd make here.</li>
+        <li>Highlight what makes rural practice rewarding: broad scope of practice, deep community relationships, and the knowledge that you are essential — not one of hundreds.</li>
+        <li>Partner with medical schools and residency programs to promote rural rotations in your area. Students who experience rural practice often return to it.</li>
+        ${hpsaFacs.length > 0 ? '<li>Leverage your HPSA designation in recruitment — providers who work in HPSAs may qualify for federal loan repayment programs, which is a powerful incentive.</li>' : ''}
       </ul>
 
       ${isSystem ? `
-      <h3>Strategy 5: Coordinated System Advocacy</h3>
+      <h3>Strategy 5: Coordinate Across ${systemName}</h3>
+      <p>${systemName} operates ${facs.length} rural facilities in Minnesota. Coordinated advocacy amplifies the message:</p>
       <ul>
-        <li>Coordinate messaging across all ${facs.length} ${systemName} rural facilities for maximum impact</li>
-        <li>Aggregate data: ${Math.round(totalFTE).toLocaleString()} FTEs and ${totalDischarges.toLocaleString()} patients across the system carries more weight than individual facility numbers</li>
-        <li>Joint letters signed by leadership at all facilities</li>
-        <li>Unified social media campaign with shared visual identity and hashtag</li>
-        <li>System-wide community impact report — one document that tells the full story</li>
+        <li><strong>Aggregate the numbers:</strong> ${Math.round(totalFTE).toLocaleString()} FTEs, ${totalPop.toLocaleString()} residents served, ${totalBeds} beds across ${facs.length} facilities. These system-wide numbers carry weight that individual facility data cannot.</li>
+        <li><strong>Unified messaging:</strong> Develop shared talking points, a common visual identity, and a coordinated social media effort so that every facility is telling the same story at the same time.</li>
+        <li><strong>Joint communications:</strong> A letter signed by ${facs.length} facility leaders, or a report covering all ${facs.length} communities, demonstrates the scope of the issue in a way no single facility can.</li>
+        <li><strong>Share resources:</strong> One strong press kit, one well-designed fact sheet template, and one set of social media assets can be adapted for each facility — saving time and ensuring quality.</li>
       </ul>` : ''}
     </div>
 
     <div class="pb-section">
       <h2>Recommended Deliverables</h2>
       <table class="pb-table">
-        <thead><tr><th>Deliverable</th><th>Purpose</th><th>Timeline</th></tr></thead>
+        <thead><tr><th>Deliverable</th><th>Purpose</th><th>Suggested Timeline</th></tr></thead>
         <tbody>
-          <tr><td>Community Fact Sheet (1-page)</td><td>Board meetings, legislator visits, community events</td><td>Week 1</td></tr>
-          <tr><td>Template Letters (2-3 versions)</td><td>Community members to send to legislators</td><td>Week 1</td></tr>
-          <tr><td>Website "Take Action" Page</td><td>Central hub for advocacy resources</td><td>Week 2</td></tr>
-          <tr><td>Press Kit</td><td>Media outreach and story placement</td><td>Week 2-3</td></tr>
-          <tr><td>Social Media Campaign Kit</td><td>Consistent messaging across platforms</td><td>Week 2-3</td></tr>
-          <tr><td>Staff Spotlight Content</td><td>Humanize the data, build community connection</td><td>Ongoing</td></tr>
-          ${isSystem ? '<tr><td>System-Wide Impact Report</td><td>Aggregated data for system-level advocacy</td><td>Week 3-4</td></tr>' : ''}
+          <tr><td>Community Fact Sheet (1-page)</td><td>Board meetings, legislator visits, community events, church bulletins</td><td>Week 1</td></tr>
+          <tr><td>Template Letters to Legislators (2-3 versions)</td><td>For community members, board members, and business leaders to personalize and send</td><td>Week 1</td></tr>
+          <tr><td>"Support Your Hospital" Website Page</td><td>Central hub with legislator contacts, talking points, and action steps</td><td>Week 2</td></tr>
+          <tr><td>Press Kit</td><td>Local media outreach — data, staff profiles, patient stories</td><td>Week 2-3</td></tr>
+          <tr><td>Social Media Campaign Kit</td><td>Graphics, key messages, and posting calendar for consistent visibility</td><td>Week 2-3</td></tr>
+          <tr><td>Staff Spotlight Content</td><td>Ongoing series to humanize your facility and build community connection</td><td>Ongoing</td></tr>
+          ${isSystem ? `<tr><td>${systemName} System-Wide Impact Report</td><td>Aggregated data across all ${facs.length} facilities for system-level advocacy</td><td>Week 3-4</td></tr>` : ''}
         </tbody>
       </table>
+      <p style="font-size:12px;color:#666;margin-top:8px">These timelines assume a single marketing person working on advocacy alongside regular responsibilities. Adjust based on your capacity and urgency.</p>
     </div>
 
     <div class="pb-section">
-      <h2>About This Playbook</h2>
-      <p>This playbook was prepared by Mason Jar Marketing using publicly available federal healthcare data. All facility-level data comes from CMS Medicare Cost Reports (FY 2023). Rurality classifications use USDA RUCA codes (2020 Census). Health Professional Shortage Area designations are from HRSA. County employment data is from the U.S. Census Bureau County Business Patterns (2021).</p>
-      <h3>Data Notes</h3>
-      <p style="font-size:11px;line-height:1.6;color:#666">
-        <strong>*&nbsp;Est. Population Served:</strong> Estimated by assigning each non-metro Minnesota ZIP code (RUCA 4–10) to its nearest Critical Access Hospital by straight-line distance, then summing the 2020 Census population (ACS 5-Year Estimates). This is an approximation — actual service areas vary based on road networks, patient choice, and system affiliations. Your facility will have more precise service area data.<br><br>
-        <strong>**&nbsp;FTE Employees / Inpatient Discharges / Beds:</strong> From CMS Medicare Hospital Cost Reports (Form 2552-10), most recent filing available (fiscal years ending 2022–2023). FTE = full-time equivalent employees on payroll; actual total headcount including part-time staff is typically 1.3–1.5x higher. Inpatient discharges count patients admitted and released across all payers — this does NOT include outpatient visits, emergency department visits, or clinic visits, which typically represent the majority of patient encounters at rural facilities.<br><br>
-        <strong>***&nbsp;Distance to Next Facility:</strong> Straight-line (as-the-crow-flies) distance to the nearest other Critical Access Hospital in this dataset. Actual driving distance will be longer.<br><br>
-        <strong>County Healthcare Employment:</strong> U.S. Census Bureau County Business Patterns (2021), NAICS code 62 (Health Care and Social Assistance). Includes all healthcare employers in the county, not just this facility.<br><br>
-        <strong>HPSA Score:</strong> HRSA Health Professional Shortage Area designation for Primary Care. Scores range 0–25; higher = more severe shortage. Not all facilities are in designated HPSAs.
+      <h2>Data Notes</h2>
+      <p style="font-size:11px;line-height:1.7;color:#555">
+        <strong>*&nbsp;Est. Population Served:</strong> Estimated by assigning each non-metro Minnesota ZIP code (RUCA 4–10) to its nearest Critical Access Hospital by straight-line distance, then summing the 2020 Census population (ACS 5-Year Estimates). This is an approximation — actual service areas vary based on road networks, patient preferences, and health system affiliations. We encourage you to replace this estimate with your facility's actual service area data if available.<br><br>
+        <strong>**&nbsp;FTE Employees / Inpatient Discharges / Beds:</strong> From CMS Medicare Hospital Cost Reports (Form 2552-10), most recent filing available (fiscal years ending 2022–2023). FTE = full-time equivalent employees on payroll; actual total headcount including part-time staff is typically 1.3–1.5x higher. Inpatient discharges count patients admitted and released across all payers. This does NOT include outpatient visits, emergency department visits, or clinic visits, which typically represent the large majority of patient encounters at rural facilities. Your facility can provide exact total encounter numbers.<br><br>
+        <strong>***&nbsp;Distance to Next Facility:</strong> Straight-line (as-the-crow-flies) distance to the nearest other Critical Access Hospital in this dataset. Actual driving distance will be longer, often significantly so in rural areas with limited road networks.<br><br>
+        <strong>HPSA Score:</strong> Health Resources and Services Administration (HRSA) Health Professional Shortage Area designation for Primary Care. Scores range 0–25; higher indicates more severe shortage. Not all facilities are located in designated HPSAs.
       </p>
+    </div>
 
-      <p>Mason Jar Marketing specializes in creative marketing communications for rural healthcare organizations. We understand your world — limited resources, big missions, and communities that depend on you.</p>
-      <p style="margin-top:12px"><strong>Ready to execute this playbook?</strong> Contact Erin Mason at Mason Jar Marketing.<br>
-      masonjarmarketing.com &mdash; Schedule a call: masonjarmarketing.as.me/marketing</p>
+    <div class="pb-section" style="margin-top:24px;padding-top:16px;border-top:1px solid #e5e7eb">
+      <p style="font-size:12px;color:#666">This playbook was prepared using publicly available federal data by Mason Jar Marketing. If you need help executing any of these strategies — from designing fact sheets to running a coordinated campaign — we'd be happy to talk.</p>
+      <p style="font-size:12px;color:#333;margin-top:8px">Erin Mason, Founder &amp; Creative Director<br>
+      Mason Jar Marketing &mdash; masonjarmarketing.com<br>
+      Schedule a conversation: masonjarmarketing.as.me/marketing</p>
     </div>
 
     <div class="pb-footer">
-      Mason Jar Marketing &mdash; Hudson, WI &mdash; masonjarmarketing.com<br>
-      Data sources: CMS Hospital Cost Reports (FY 2023), USDA RUCA Codes (2020), HRSA HPSA Designations, Census Bureau CBP (2021)
+      Data sources: CMS Hospital Cost Reports (FY 2023), USDA RUCA Codes (2020 Census), HRSA HPSA Designations, U.S. Census Bureau ACS &amp; CBP (2020–2021)
     </div>
   `;
 }

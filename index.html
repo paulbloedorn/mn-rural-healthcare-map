@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rural MN Healthcare Facilities Dashboard</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0f172a; color: #e2e8f0; }
+
+  /* Header */
+  #header {
+    background: #1e293b; border-bottom: 1px solid #334155;
+    padding: 14px 24px;
+    display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;
+  }
+  #header h1 { font-size: 17px; font-weight: 600; color: #f8fafc; }
+  #header .subtitle { font-size: 12px; color: #94a3b8; }
+  #header .brand { font-size: 11px; color: #64748b; }
+
+  #stats { display: flex; gap: 24px; flex-wrap: wrap; }
+  .stat { text-align: center; }
+  .stat .num { font-size: 20px; font-weight: 700; color: #f8fafc; }
+  .stat .label { font-size: 10px; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; }
+
+  /* Layout */
+  #container { display: flex; height: calc(100vh - 72px); }
+  #map { flex: 1; min-width: 0; }
+
+  /* Sidebar */
+  #sidebar {
+    width: 440px; background: #1e293b; border-left: 1px solid #334155;
+    overflow-y: auto; display: flex; flex-direction: column;
+  }
+  #sidebar.collapsed { width: 0; overflow: hidden; border: none; }
+  #sidebar-header {
+    padding: 14px 20px; border-bottom: 1px solid #334155;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  #sidebar-header h2 { font-size: 14px; font-weight: 600; color: #f8fafc; }
+  #sidebar-close { background: none; border: none; color: #64748b; cursor: pointer; font-size: 18px; }
+  #sidebar-content { padding: 20px; flex: 1; overflow-y: auto; }
+
+  .sidebar-empty {
+    display: flex; align-items: center; justify-content: center; height: 100%;
+    color: #475569; font-size: 13px; text-align: center; padding: 40px;
+  }
+
+  /* Facility detail */
+  .facility-name { font-size: 17px; font-weight: 700; color: #f8fafc; margin-bottom: 2px; }
+  .facility-city { font-size: 13px; color: #94a3b8; margin-bottom: 4px; }
+  .facility-system { font-size: 12px; color: #60a5fa; margin-bottom: 14px; }
+
+  .data-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; }
+  .data-card { background: #0f172a; border-radius: 6px; padding: 10px; border: 1px solid #334155; }
+  .data-card .value { font-size: 18px; font-weight: 700; color: #f8fafc; }
+  .data-card .label { font-size: 10px; color: #64748b; margin-top: 2px; }
+
+  .summary-box {
+    background: #0f172a; border-radius: 6px; padding: 12px; margin-bottom: 14px;
+    border: 1px solid #334155; font-size: 13px; line-height: 1.5; color: #cbd5e1;
+  }
+
+  .detail-section { margin-bottom: 14px; }
+  .detail-section h3 {
+    font-size: 11px; color: #64748b; text-transform: uppercase;
+    letter-spacing: 0.5px; margin-bottom: 6px; padding-bottom: 4px;
+    border-bottom: 1px solid #334155;
+  }
+  .detail-row { display: flex; justify-content: space-between; padding: 3px 0; font-size: 12px; }
+  .detail-row .key { color: #94a3b8; }
+  .detail-row .val { color: #e2e8f0; font-weight: 500; }
+
+  .contact-card {
+    background: #0f172a; border-radius: 6px; padding: 10px;
+    border: 1px solid #334155; margin-bottom: 8px;
+  }
+  .contact-card .contact-name { font-size: 13px; font-weight: 600; color: #f8fafc; }
+  .contact-card .contact-title { font-size: 11px; color: #94a3b8; margin-bottom: 4px; }
+  .contact-card a { font-size: 11px; color: #60a5fa; text-decoration: none; margin-right: 10px; }
+  .contact-card a:hover { text-decoration: underline; }
+
+  .hpsa-badge { display: inline-block; padding: 2px 8px; border-radius: 9999px; font-size: 11px; font-weight: 600; }
+  .hpsa-high { background: #991b1b; color: #fca5a5; }
+  .hpsa-medium { background: #78350f; color: #fcd34d; }
+  .hpsa-low { background: #064e3b; color: #6ee7b7; }
+
+  .btn { display: block; width: 100%; padding: 10px; text-align: center; border: none; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer; margin-bottom: 8px; transition: background 0.2s; }
+  .btn-primary { background: #2563eb; color: #fff; }
+  .btn-primary:hover { background: #1d4ed8; }
+  .btn-secondary { background: #334155; color: #e2e8f0; }
+  .btn-secondary:hover { background: #475569; }
+
+  /* Legend */
+  #legend {
+    position: absolute; bottom: 16px; left: 16px; z-index: 1000;
+    background: rgba(15, 23, 42, 0.92); padding: 10px 14px; border-radius: 6px;
+    border: 1px solid #334155; font-size: 11px;
+  }
+  .legend-item { display: flex; align-items: center; gap: 6px; margin-bottom: 3px; color: #94a3b8; }
+  .legend-dot { width: 10px; height: 10px; border-radius: 50%; }
+
+  /* Print — Playbook */
+  @media print {
+    body { background: #fff !important; color: #1a1a1a !important; font-family: 'Georgia', serif; }
+    #header, #map, #legend, #sidebar, #container { display: none !important; }
+    #playbook { display: block !important; }
+  }
+  #playbook { display: none; }
+
+  @media print {
+    #playbook { padding: 32px 48px; }
+    .pb-cover { text-align: center; padding: 80px 0 40px; }
+    .pb-cover h1 { font-size: 28px; margin-bottom: 8px; color: #1a1a1a; }
+    .pb-cover h2 { font-size: 18px; font-weight: 400; color: #666; margin-bottom: 24px; }
+    .pb-cover .pb-prepared { font-size: 13px; color: #999; margin-top: 40px; }
+    .pb-section { margin-bottom: 24px; }
+    .pb-section h2 { font-size: 18px; border-bottom: 2px solid #1a1a1a; padding-bottom: 4px; margin-bottom: 12px; }
+    .pb-section h3 { font-size: 14px; margin: 12px 0 6px; color: #333; }
+    .pb-section p, .pb-section li { font-size: 13px; line-height: 1.6; color: #333; }
+    .pb-section ul { padding-left: 20px; }
+    .pb-table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 12px; }
+    .pb-table th { background: #f3f4f6; text-align: left; padding: 6px 8px; border: 1px solid #d1d5db; font-weight: 600; }
+    .pb-table td { padding: 6px 8px; border: 1px solid #d1d5db; }
+    .pb-stat-row { display: flex; gap: 16px; margin: 12px 0; }
+    .pb-stat { flex: 1; text-align: center; border: 1px solid #d1d5db; border-radius: 6px; padding: 12px; }
+    .pb-stat .num { font-size: 24px; font-weight: 700; color: #1a1a1a; }
+    .pb-stat .label { font-size: 11px; color: #666; }
+    .pb-footer { text-align: center; font-size: 10px; color: #999; margin-top: 32px; padding-top: 12px; border-top: 1px solid #e5e7eb; }
+    .pb-pagebreak { page-break-before: always; }
+    .pb-contact-block { margin: 6px 0; padding: 8px; background: #f9fafb; border-radius: 4px; }
+    .pb-contact-block strong { font-size: 13px; }
+    .pb-contact-block span { font-size: 12px; color: #666; }
+  }
+
+  @media (max-width: 768px) {
+    #container { flex-direction: column; }
+    #sidebar { width: 100%; height: 50vh; border-left: none; border-top: 1px solid #334155; }
+    #map { height: 50vh; }
+  }
+</style>
+</head>
+<body>
+
+<div id="header">
+  <div>
+    <h1>Rural MN Healthcare Facilities</h1>
+    <div class="subtitle">Critical Access Hospitals &amp; Rural Health Clinics</div>
+  </div>
+  <div id="stats"></div>
+  <div class="brand">Mason Jar Marketing</div>
+</div>
+
+<div id="container">
+  <div id="map">
+    <div id="legend">
+      <div style="font-weight:600;margin-bottom:4px;color:#e2e8f0;">HPSA Severity</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#dc2626"></div> High (15+)</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#d97706"></div> Medium (10-14)</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#059669"></div> Lower (&lt;10)</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#64748b"></div> No data</div>
+    </div>
+  </div>
+  <div id="sidebar">
+    <div id="sidebar-header">
+      <h2>Facility Details</h2>
+      <button id="sidebar-close" onclick="closeSidebar()">&times;</button>
+    </div>
+    <div id="sidebar-content">
+      <div class="sidebar-empty">Select a facility on the map to view its data and generate a playbook.</div>
+    </div>
+  </div>
+</div>
+
+<div id="playbook"></div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+let facilities = [];
+let map, selectedFacility = null;
+
+async function init() {
+  facilities = await (await fetch('facilities.json')).json();
+  renderStats();
+  initMap();
+}
+
+function renderStats() {
+  const total = facilities.length;
+  const totalPop = facilities.reduce((s, f) => s + (f.est_population_served || 0), 0);
+  const totalFTE = facilities.reduce((s, f) => s + (f.fte_employees || 0), 0);
+  const dists = facilities.filter(f => f.nearest_distance_miles).map(f => f.nearest_distance_miles);
+  const avgDist = dists.length ? (dists.reduce((a,b) => a+b, 0) / dists.length).toFixed(1) : '—';
+  document.getElementById('stats').innerHTML = `
+    <div class="stat"><div class="num">${total}</div><div class="label">Facilities</div></div>
+    <div class="stat"><div class="num">${totalPop.toLocaleString()}</div><div class="label">Est. Population Served</div></div>
+    <div class="stat"><div class="num">${Math.round(totalFTE).toLocaleString()}</div><div class="label">FTE Employees</div></div>
+    <div class="stat"><div class="num">${avgDist} mi</div><div class="label">Avg Distance to Next</div></div>
+  `;
+}
+
+function initMap() {
+  map = L.map('map').setView([46.5, -94.5], 6.5);
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+    attribution: '&copy; OpenStreetMap &copy; CARTO', maxZoom: 18
+  }).addTo(map);
+
+  facilities.forEach(f => {
+    if (!f.lat || !f.lon) return;
+    const color = !f.hpsa_score ? '#64748b' : f.hpsa_score >= 15 ? '#dc2626' : f.hpsa_score >= 10 ? '#d97706' : '#059669';
+    const r = f.fte_employees ? Math.max(5, Math.min(12, Math.sqrt(f.fte_employees) * 1.1)) : 5;
+    const m = L.circleMarker([f.lat, f.lon], {
+      radius: r, fillColor: color, color: '#fff', weight: 1.2, opacity: 0.85, fillOpacity: 0.75
+    }).addTo(map);
+    m.bindTooltip(`<strong>${tc(f.name)}</strong><br>${tc(f.city)}, ${tc(f.county)} Co.`, { direction: 'top', offset: [0, -6] });
+    m.on('click', () => showFacility(f));
+  });
+}
+
+function tc(s) { return s ? s.toLowerCase().replace(/(?:^|\s|[-/])\w/g, m => m.toUpperCase()).replace(/\bSt\b/g, 'St.') : ''; }
+
+function showFacility(f) {
+  selectedFacility = f;
+  const c = document.getElementById('sidebar-content');
+
+  const hpsa = f.hpsa_score
+    ? `<span class="hpsa-badge ${f.hpsa_score >= 15 ? 'hpsa-high' : f.hpsa_score >= 10 ? 'hpsa-medium' : 'hpsa-low'}">HPSA ${f.hpsa_score}/25</span>`
+    : '';
+
+  const systemTag = f.system ? `<div class="facility-system">${f.system}</div>` : '';
+
+  // Local contact
+  let contactHTML = '';
+  if (f.contact_name) {
+    contactHTML = `
+      <div class="detail-section"><h3>Facility Contact</h3>
+        <div class="contact-card">
+          <div class="contact-name">${f.contact_name}</div>
+          <div class="contact-title">${f.contact_title || ''}</div>
+          ${f.contact_email ? `<a href="mailto:${f.contact_email}">${f.contact_email}</a>` : ''}
+          ${f.contact_linkedin ? `<a href="${f.contact_linkedin}" target="_blank">LinkedIn</a>` : ''}
+        </div>
+      </div>`;
+  }
+
+  // System contacts
+  let sysContactHTML = '';
+  if (f.system_contacts) {
+    sysContactHTML = `<div class="detail-section"><h3>${f.system} System Contacts</h3>` +
+      f.system_contacts.map(sc => `
+        <div class="contact-card">
+          <div class="contact-name">${sc.name}</div>
+          <div class="contact-title">${sc.title}</div>
+          ${sc.linkedin ? `<a href="${sc.linkedin}" target="_blank">LinkedIn</a>` : ''}
+        </div>`).join('') + '</div>';
+  }
+
+  // Summary sentence
+  const parts = [];
+  if (f.fte_employees) parts.push(`${Math.round(f.fte_employees)} FTE employees`);
+  if (f.total_discharges) parts.push(`${f.total_discharges.toLocaleString()} patients served annually`);
+  if (f.nearest_distance_miles) parts.push(`nearest alternative facility ${f.nearest_distance_miles} miles away`);
+  const summary = parts.length ? parts.join(', ') + '.' : '';
+
+  c.innerHTML = `
+    <div class="facility-name">${tc(f.name)}</div>
+    <div class="facility-city">${tc(f.city)}, ${tc(f.county)} County ${hpsa}</div>
+    ${systemTag}
+
+    ${summary ? `<div class="summary-box">${summary}</div>` : ''}
+
+    <div class="data-grid">
+      <div class="data-card"><div class="value">${f.est_population_served ? f.est_population_served.toLocaleString() : '—'}</div><div class="label">Est. Population Served <sup>1</sup></div></div>
+      <div class="data-card"><div class="value">${f.fte_employees ? Math.round(f.fte_employees).toLocaleString() : '—'}</div><div class="label">FTE Employees <sup>2</sup></div></div>
+      <div class="data-card"><div class="value">${f.total_discharges ? f.total_discharges.toLocaleString() : '—'}</div><div class="label">Inpatient Discharges <sup>3</sup></div></div>
+      <div class="data-card"><div class="value">${f.nearest_distance_miles ? f.nearest_distance_miles + ' mi' : '—'}</div><div class="label">To Next Facility <sup>4</sup></div></div>
+      <div class="data-card"><div class="value">${f.beds || '—'}</div><div class="label">Beds <sup>2</sup></div></div>
+      <div class="data-card"><div class="value">${f.service_area_zips || '—'}</div><div class="label">ZIP Codes in Service Area <sup>1</sup></div></div>
+    </div>
+
+    <div class="detail-section"><h3>Data Sources &amp; Notes</h3>
+      <div style="font-size:10px;color:#64748b;line-height:1.6">
+        <sup>1</sup> <strong>Est. Population Served:</strong> Estimated by assigning each non-metro MN ZIP code (RUCA 4–10) to its nearest Critical Access Hospital by straight-line distance, then summing 2020 Census population (ACS 5-Year). This is an approximation — actual service areas may differ based on roads, patient choice, and system affiliations.<br>
+        <sup>2</sup> <strong>FTE Employees / Beds:</strong> CMS Medicare Hospital Cost Report (Form 2552-10), most recent filing (FY ending 2022–2023). FTE = full-time equivalent; actual headcount including part-time staff is typically 1.3–1.5x higher.<br>
+        <sup>3</sup> <strong>Inpatient Discharges:</strong> CMS Hospital Cost Report, same filing period. Counts patients admitted and discharged (all payers). Does NOT include outpatient visits, ER visits, or clinic visits — total patient encounters are significantly higher.<br>
+        <sup>4</sup> <strong>Distance to Next Facility:</strong> Straight-line distance to nearest other Critical Access Hospital in this dataset. Actual driving distance will be longer.
+      </div>
+    </div>
+
+    <div class="detail-section"><h3>Facility Details</h3>
+      <div class="detail-row"><span class="key">Address</span><span class="val">${tc(f.address)}, ${tc(f.city)} ${f.zip}</span></div>
+      <div class="detail-row"><span class="key">Phone</span><span class="val">${f.phone || '—'}</span></div>
+      <div class="detail-row"><span class="key">Type</span><span class="val">${f.type}</span></div>
+      <div class="detail-row"><span class="key">Ownership</span><span class="val">${f.ownership}</span></div>
+      <div class="detail-row"><span class="key">Star Rating</span><span class="val">${f.star_rating ? '\u2605'.repeat(f.star_rating) + '\u2606'.repeat(5 - f.star_rating) : 'Not rated'}</span></div>
+      <div class="detail-row"><span class="key">RUCA Code</span><span class="val">${f.ruca_code} (${f.ruca_code === '10' ? 'Rural' : f.ruca_code >= '7' ? 'Small Town' : 'Micropolitan'})</span></div>
+      <div class="detail-row"><span class="key">Emergency</span><span class="val">${f.emergency_services}</span></div>
+      <div class="detail-row"><span class="key">Nearest Facility</span><span class="val">${f.nearest_facility ? tc(f.nearest_facility) : '—'}</span></div>
+    </div>
+
+    <div class="detail-section"><h3>County Healthcare Employment</h3>
+      <div class="detail-row"><span class="key">Healthcare Employees (County)</span><span class="val">${f.county_healthcare_employees ? f.county_healthcare_employees.toLocaleString() : '—'}</span></div>
+      <div class="detail-row"><span class="key">Healthcare Establishments</span><span class="val">${f.county_healthcare_establishments || '—'}</span></div>
+      <div class="detail-row"><span class="key">HPSA Population</span><span class="val">${f.hpsa_population ? f.hpsa_population.toLocaleString() : '—'}</span></div>
+    </div>
+
+    ${contactHTML}
+    ${sysContactHTML}
+
+    <button class="btn btn-primary" onclick="generatePlaybook()">Generate Advocacy Playbook</button>
+    ${f.system ? `<button class="btn btn-secondary" onclick="generateSystemPlaybook('${f.system}')">Generate ${f.system} System Playbook</button>` : ''}
+  `;
+}
+
+function generatePlaybook() {
+  if (!selectedFacility) return;
+  buildPlaybookHTML([selectedFacility]);
+  window.print();
+}
+
+function generateSystemPlaybook(system) {
+  const sysFacilities = facilities.filter(f => f.system === system);
+  buildPlaybookHTML(sysFacilities, system);
+  window.print();
+}
+
+function buildPlaybookHTML(facs, systemName) {
+  const pb = document.getElementById('playbook');
+  const isSystem = facs.length > 1;
+  const title = isSystem ? systemName + ' Rural Minnesota Facilities' : tc(facs[0].name);
+  const subtitle = isSystem
+    ? `Advocacy Marketing Playbook for ${facs.length} ${systemName} Facilities`
+    : `Advocacy Marketing Playbook`;
+
+  // Aggregate stats
+  const totalPop = facs.reduce((s, f) => s + (f.est_population_served || 0), 0);
+  const totalFTE = facs.reduce((s, f) => s + (f.fte_employees || 0), 0);
+  const totalDischarges = facs.reduce((s, f) => s + (f.total_discharges || 0), 0);
+  const totalBeds = facs.reduce((s, f) => s + (f.beds || 0), 0);
+  const maxDist = Math.max(...facs.map(f => f.nearest_distance_miles || 0));
+  const hpsaFacs = facs.filter(f => f.hpsa_score);
+
+  // Build facility data table rows
+  const tableRows = facs.map(f => `
+    <tr>
+      <td><strong>${tc(f.name)}</strong><br><span style="color:#666;font-size:11px">${tc(f.city)}, ${tc(f.county)} Co.</span></td>
+      <td>${f.est_population_served ? f.est_population_served.toLocaleString() : '—'}</td>
+      <td>${f.fte_employees ? Math.round(f.fte_employees) : '—'}</td>
+      <td>${f.total_discharges ? f.total_discharges.toLocaleString() : '—'}</td>
+      <td>${f.beds || '—'}</td>
+      <td>${f.nearest_distance_miles ? f.nearest_distance_miles + ' mi' : '—'}</td>
+      <td>${f.hpsa_score ? f.hpsa_score + '/25' : '—'}</td>
+    </tr>`).join('');
+
+  // Contact section
+  let contactSection = '';
+  if (isSystem && facs[0].system_contacts) {
+    contactSection = `
+      <div class="pb-section">
+        <h2>System Marketing Contacts</h2>
+        ${facs[0].system_contacts.map(sc => `
+          <div class="pb-contact-block">
+            <strong>${sc.name}</strong> &mdash; <span>${sc.title}</span><br>
+            <span style="font-size:11px;color:#2563eb">${sc.linkedin || ''}</span>
+          </div>`).join('')}
+      </div>`;
+  }
+
+  // Local contacts
+  const localContacts = facs.filter(f => f.contact_name);
+  let localContactSection = '';
+  if (localContacts.length > 0) {
+    localContactSection = `
+      <div class="pb-section">
+        <h2>Facility Marketing Contacts</h2>
+        ${localContacts.map(f => `
+          <div class="pb-contact-block">
+            <strong>${f.contact_name}</strong> &mdash; <span>${f.contact_title || ''}</span>
+            <br><span style="font-size:11px">${tc(f.name)}, ${tc(f.city)}</span>
+            ${f.contact_email ? `<br><span style="font-size:11px;color:#2563eb">${f.contact_email}</span>` : ''}
+            ${f.contact_linkedin ? `<br><span style="font-size:11px;color:#2563eb">${f.contact_linkedin}</span>` : ''}
+          </div>`).join('')}
+      </div>`;
+  }
+
+  pb.innerHTML = `
+    <div class="pb-cover">
+      <h1>${title}</h1>
+      <h2>${subtitle}</h2>
+      <div class="pb-stat-row">
+        <div class="pb-stat"><div class="num">${totalPop.toLocaleString()}</div><div class="label">Est. Population Served *</div></div>
+        <div class="pb-stat"><div class="num">${Math.round(totalFTE).toLocaleString()}</div><div class="label">FTE Employees **</div></div>
+        <div class="pb-stat"><div class="num">${totalDischarges.toLocaleString()}</div><div class="label">Inpatient Discharges **</div></div>
+        <div class="pb-stat"><div class="num">${isSystem ? facs.length : (facs[0].nearest_distance_miles || '—')}</div><div class="label">${isSystem ? 'Facilities' : 'Miles to Next ***'}</div></div>
+      </div>
+      <div class="pb-prepared">Prepared by Mason Jar Marketing &mdash; masonjarmarketing.com<br>Data current as of FY 2023 &mdash; Sources: CMS Cost Reports, USDA RUCA, HRSA HPSA, Census Bureau</div>
+    </div>
+
+    <div class="pb-pagebreak"></div>
+
+    <div class="pb-section">
+      <h2>Facility Data</h2>
+      <table class="pb-table">
+        <thead><tr>
+          <th>Facility</th><th>Est. Pop. Served *</th><th>FTEs **</th><th>Inpt. Discharges **</th><th>Beds **</th><th>Next Facility ***</th><th>HPSA</th>
+        </tr></thead>
+        <tbody>${tableRows}</tbody>
+      </table>
+    </div>
+
+    ${contactSection}
+    ${localContactSection}
+
+    <div class="pb-pagebreak"></div>
+
+    <div class="pb-section">
+      <h2>Advocacy Marketing Playbook</h2>
+      <p>The following strategies are designed for ${isSystem ? systemName + "'s rural Minnesota facilities" : tc(facs[0].name)} to build community support and advocate for continued federal funding of rural healthcare.</p>
+
+      <h3>Strategy 1: Community Impact Communication</h3>
+      <p>Use your facility data to make the impact of potential closure concrete and local:</p>
+      <ul>
+        <li><strong>Lead with distance:</strong> "${isSystem ? 'If these facilities close, some communities will face drives of up to ' + maxDist + ' miles to the nearest hospital.' : 'If ' + tc(facs[0].name) + ' closes, the nearest facility is ' + (facs[0].nearest_distance_miles || '?') + ' miles away.'}"</li>
+        <li><strong>Population impact:</strong> An estimated ${totalPop.toLocaleString()} people depend on ${isSystem ? 'these facilities' : 'this facility'} as their nearest hospital — across ${totalBeds} hospital beds.</li>
+        <li><strong>Employment impact:</strong> ${Math.round(totalFTE)} FTE positions (actual headcount likely 1.3–1.5x higher) represent the livelihoods of families in ${isSystem ? 'these communities' : tc(facs[0].city)}. Rural hospitals are often a top-3 employer in their county.</li>
+        <li><strong>Inpatient volume:</strong> ${totalDischarges.toLocaleString()} inpatient discharges annually — and total patient encounters (including outpatient, ER, and clinic visits) are significantly higher. Your facility can provide exact numbers.</li>
+        ${hpsaFacs.length > 0 ? `<li><strong>Shortage designation:</strong> ${hpsaFacs.length} ${hpsaFacs.length === 1 ? 'facility operates' : 'facilities operate'} in a federally designated Health Professional Shortage Area. The federal government itself has recognized these communities need more healthcare access, not less.</li>` : ''}
+      </ul>
+
+      <h3>Strategy 2: Stakeholder Engagement</h3>
+      <ul>
+        <li>Create a one-page community fact sheet using the data above — print for board meetings, community events, and legislator visits</li>
+        <li>Draft template letters for community members to send to their state legislators and congressional delegation</li>
+        <li>Establish a "Take Action" page on your website with legislator contact information and talking points</li>
+        <li>Host community listening sessions — provide the data that frames the conversation</li>
+      </ul>
+
+      <h3>Strategy 3: Media &amp; Public Relations</h3>
+      <ul>
+        <li>Develop a press kit with facility data, staff stories, and patient testimonials</li>
+        <li>Pitch local media: "What happens to ${isSystem ? 'our communities' : tc(facs[0].city)} if federal healthcare funding is cut?"</li>
+        <li>Staff spotlight series — put faces on the people behind the numbers</li>
+        <li>Social media campaign using consistent messaging and data points across all ${isSystem ? systemName + ' facilities' : 'channels'}</li>
+      </ul>
+
+      <h3>Strategy 4: Provider Recruitment Messaging</h3>
+      <ul>
+        <li>In HPSA-designated areas, reframe marketing to also recruit providers: "Help us serve a community that needs you"</li>
+        <li>Highlight quality of life, community connection, and the impact a single provider can make in a rural setting</li>
+        <li>Partner with medical schools and residency programs to promote rural rotations</li>
+      </ul>
+
+      ${isSystem ? `
+      <h3>Strategy 5: Coordinated System Advocacy</h3>
+      <ul>
+        <li>Coordinate messaging across all ${facs.length} ${systemName} rural facilities for maximum impact</li>
+        <li>Aggregate data: ${Math.round(totalFTE).toLocaleString()} FTEs and ${totalDischarges.toLocaleString()} patients across the system carries more weight than individual facility numbers</li>
+        <li>Joint letters signed by leadership at all facilities</li>
+        <li>Unified social media campaign with shared visual identity and hashtag</li>
+        <li>System-wide community impact report — one document that tells the full story</li>
+      </ul>` : ''}
+    </div>
+
+    <div class="pb-section">
+      <h2>Recommended Deliverables</h2>
+      <table class="pb-table">
+        <thead><tr><th>Deliverable</th><th>Purpose</th><th>Timeline</th></tr></thead>
+        <tbody>
+          <tr><td>Community Fact Sheet (1-page)</td><td>Board meetings, legislator visits, community events</td><td>Week 1</td></tr>
+          <tr><td>Template Letters (2-3 versions)</td><td>Community members to send to legislators</td><td>Week 1</td></tr>
+          <tr><td>Website "Take Action" Page</td><td>Central hub for advocacy resources</td><td>Week 2</td></tr>
+          <tr><td>Press Kit</td><td>Media outreach and story placement</td><td>Week 2-3</td></tr>
+          <tr><td>Social Media Campaign Kit</td><td>Consistent messaging across platforms</td><td>Week 2-3</td></tr>
+          <tr><td>Staff Spotlight Content</td><td>Humanize the data, build community connection</td><td>Ongoing</td></tr>
+          ${isSystem ? '<tr><td>System-Wide Impact Report</td><td>Aggregated data for system-level advocacy</td><td>Week 3-4</td></tr>' : ''}
+        </tbody>
+      </table>
+    </div>
+
+    <div class="pb-section">
+      <h2>About This Playbook</h2>
+      <p>This playbook was prepared by Mason Jar Marketing using publicly available federal healthcare data. All facility-level data comes from CMS Medicare Cost Reports (FY 2023). Rurality classifications use USDA RUCA codes (2020 Census). Health Professional Shortage Area designations are from HRSA. County employment data is from the U.S. Census Bureau County Business Patterns (2021).</p>
+      <h3>Data Notes</h3>
+      <p style="font-size:11px;line-height:1.6;color:#666">
+        <strong>*&nbsp;Est. Population Served:</strong> Estimated by assigning each non-metro Minnesota ZIP code (RUCA 4–10) to its nearest Critical Access Hospital by straight-line distance, then summing the 2020 Census population (ACS 5-Year Estimates). This is an approximation — actual service areas vary based on road networks, patient choice, and system affiliations. Your facility will have more precise service area data.<br><br>
+        <strong>**&nbsp;FTE Employees / Inpatient Discharges / Beds:</strong> From CMS Medicare Hospital Cost Reports (Form 2552-10), most recent filing available (fiscal years ending 2022–2023). FTE = full-time equivalent employees on payroll; actual total headcount including part-time staff is typically 1.3–1.5x higher. Inpatient discharges count patients admitted and released across all payers — this does NOT include outpatient visits, emergency department visits, or clinic visits, which typically represent the majority of patient encounters at rural facilities.<br><br>
+        <strong>***&nbsp;Distance to Next Facility:</strong> Straight-line (as-the-crow-flies) distance to the nearest other Critical Access Hospital in this dataset. Actual driving distance will be longer.<br><br>
+        <strong>County Healthcare Employment:</strong> U.S. Census Bureau County Business Patterns (2021), NAICS code 62 (Health Care and Social Assistance). Includes all healthcare employers in the county, not just this facility.<br><br>
+        <strong>HPSA Score:</strong> HRSA Health Professional Shortage Area designation for Primary Care. Scores range 0–25; higher = more severe shortage. Not all facilities are in designated HPSAs.
+      </p>
+
+      <p>Mason Jar Marketing specializes in creative marketing communications for rural healthcare organizations. We understand your world — limited resources, big missions, and communities that depend on you.</p>
+      <p style="margin-top:12px"><strong>Ready to execute this playbook?</strong> Contact Erin Mason at Mason Jar Marketing.<br>
+      masonjarmarketing.com &mdash; Schedule a call: masonjarmarketing.as.me/marketing</p>
+    </div>
+
+    <div class="pb-footer">
+      Mason Jar Marketing &mdash; Hudson, WI &mdash; masonjarmarketing.com<br>
+      Data sources: CMS Hospital Cost Reports (FY 2023), USDA RUCA Codes (2020), HRSA HPSA Designations, Census Bureau CBP (2021)
+    </div>
+  `;
+}
+
+function closeSidebar() { document.getElementById('sidebar').classList.toggle('collapsed'); }
+init();
+</script>
+</body>
+</html>

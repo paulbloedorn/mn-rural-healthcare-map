@@ -259,7 +259,7 @@ function showFacility(f) {
   // Summary sentence
   const parts = [];
   if (f.fte_employees) parts.push(`${Math.round(f.fte_employees)} FTE employees`);
-  if (f.total_discharges) parts.push(`${f.total_discharges.toLocaleString()} patients served annually`);
+  if (f.est_population_served) parts.push(`serving an estimated ${f.est_population_served.toLocaleString()} local residents`);
   if (f.nearest_distance_miles) parts.push(`nearest alternative facility ${f.nearest_distance_miles} miles away`);
   const summary = parts.length ? parts.join(', ') + '.' : '';
 
